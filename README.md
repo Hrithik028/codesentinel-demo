@@ -25,7 +25,7 @@ curl -X POST "$SCAN_ENDPOINT" \
   --data @report.json --fail-with-body
 ```
 
-If either secret is missing, step 3 is skipped with a notice, so forks still get the artifact.
+Step 3 runs only for pushes to the default branch and only when both secrets are set. Other branches and pull requests get the artifact but never touch Jira. This stops an unmerged branch from resolving issues that are still open on the default branch.
 
 ## Connect it to Jira
 

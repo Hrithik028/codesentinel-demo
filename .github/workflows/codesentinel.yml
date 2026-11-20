@@ -14,6 +14,7 @@ jobs:
       SCAN_ENDPOINT: ${{ secrets.SCAN_ENDPOINT }}
       SCAN_TOKEN: ${{ secrets.SCAN_TOKEN }}
       CODESENTINEL_REF: main
+      IS_DEFAULT_BRANCH_PUSH: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +34,7 @@ jobs:
           path: report.json
 
       - name: Send report to CodeSentinel for Jira
-        if: env.SCAN_ENDPOINT != '' && env.SCAN_TOKEN != ''
+        if: env.IS_DEFAULT_BRANCH_PUSH == 'true' && env.SCAN_ENDPOINT != '' && env.SCAN_TOKEN != ''
         run: |
           curl -sS -X POST "$SCAN_ENDPOINT" \
             -H "Content-Type: application/json" \
@@ -43,5 +44,5 @@ jobs:
             --data @report.json --fail-with-body
 
       - name: Skip upload notice
-        if: env.SCAN_ENDPOINT == '' || env.SCAN_TOKEN == ''
-        run: echo "::notice::SCAN_ENDPOINT or SCAN_TOKEN secret not set; report kept as an artifact only."
+        if: env.IS_DEFAULT_BRANCH_PUSH != 'true' || env.SCAN_ENDPOINT == '' || env.SCAN_TOKEN == ''
+        run: echo "::notice::Report kept as an artifact only (uploads happen on default-branch pushes with SCAN_ENDPOINT and SCAN_TOKEN set)."
