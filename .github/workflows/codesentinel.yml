@@ -1,0 +1,47 @@
+name: CodeSentinel
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      SCAN_ENDPOINT: ${{ secrets.SCAN_ENDPOINT }}
+      SCAN_TOKEN: ${{ secrets.SCAN_TOKEN }}
+      CODESENTINEL_REF: main
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run CodeSentinel
+        run: |
+          git clone --depth 1 --branch "$CODESENTINEL_REF" https://github.com/Hrithik028/CodeSentinel.git "$RUNNER_TEMP/codesentinel"
+          node "$RUNNER_TEMP/codesentinel/src/cli.js" --json . > report.json || true
+          node -e "const r=require('./report.json');console.log('Score',r.summary.score,r.summary.grade,JSON.stringify(r.summary.severityCounts))"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codesentinel-report
+          path: report.json
+
+      - name: Send report to CodeSentinel for Jira
+        if: env.SCAN_ENDPOINT != '' && env.SCAN_TOKEN != ''
+        run: |
+          curl -sS -X POST "$SCAN_ENDPOINT" \
+            -H "Content-Type: application/json" \
+            -H "X-Scan-Token: $SCAN_TOKEN" \
+            -H "X-Repo: $GITHUB_REPOSITORY" \
+            -H "X-Commit: $GITHUB_SHA" \
+            --data @report.json --fail-with-body
+
+      - name: Skip upload notice
+        if: env.SCAN_ENDPOINT == '' || env.SCAN_TOKEN == ''
+        run: echo "::notice::SCAN_ENDPOINT or SCAN_TOKEN secret not set; report kept as an artifact only."
