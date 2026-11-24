@@ -41,6 +41,7 @@ jobs:
             -H "X-Scan-Token: $SCAN_TOKEN" \
             -H "X-Repo: $GITHUB_REPOSITORY" \
             -H "X-Commit: $GITHUB_SHA" \
+            -H "X-Commit-Time: $(git log -1 --format=%cI)" \
             --data @report.json --fail-with-body
 
       - name: Skip upload notice
